@@ -46,7 +46,8 @@ socket.addEventListener('message', async (event) => {
     const answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
 
-    const id = uuid.v4()
+    //const id = uuid.v4()
+    const id = 1234;
     log(`Sending answer`)
     socket.send(JSON.stringify({
       method: "answer",
@@ -59,26 +60,29 @@ socket.addEventListener('message', async (event) => {
 const join = async () => {
   const offer = await pc.createOffer()
   await pc.setLocalDescription(offer)
-  const id = uuid.v4()
+  //const id = uuid.v4()
+  const id = 1234;
 
   socket.send(JSON.stringify({
     method: "join",
-    params: { sid: "test room", offer: pc.localDescription },
+    params: { sid: 1234, offer: pc.localDescription },
     id
   }))
 
 
   socket.addEventListener('message', (event) => {
+    console.log( event.data );
     const resp = JSON.parse(event.data)
     if (resp.id === id) {
       log(`Got publish answer`)
+      console.log("Got publish answer")
 
       // Hook this here so it's not called before joining
       pc.onnegotiationneeded = async function () {
         log("Renegotiating")
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
-        const id = uuid.v4()
+        //const id = uuid.v4()
         socket.send(JSON.stringify({
           method: "offer",
           params: { desc: offer },
@@ -93,6 +97,8 @@ const join = async () => {
           }
         })
       }
+
+      console.log( resp );
 
       pc.setRemoteDescription(resp.result)
     }
