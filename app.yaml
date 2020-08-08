@@ -1,0 +1,6 @@
+runtime: go113 # or go112 for Go 1.12 runtime
+
+main: ./cmd/server/json-rpc
+
+manual_scaling:
+  instances: 1

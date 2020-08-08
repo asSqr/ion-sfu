@@ -8,7 +8,15 @@ const config = {
   }]
 }
 
-const socket = new WebSocket("ws://localhost:7000/ws");
+//const socket = new WebSocket("ws://localhost:7000/ws");
+const socket = new WebSocket("wss://kaiy-co-dev-sfu.an.r.appspot.com:8081/ws");
+//const scheme = window.location.protocol == "https:" ? 'wss://' : 'ws://';
+/*const webSocketUri =  scheme
+                    + window.location.hostname
+                    + (location.port ? ':'+location.port: '')
+                    + '/ws';*/
+//const socket = new WebSocket(webSocketUri);
+
 const pc = new RTCPeerConnection(config)
 
 pc.ontrack = function ({ track, streams }) {
