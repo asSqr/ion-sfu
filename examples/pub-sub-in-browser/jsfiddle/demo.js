@@ -3,9 +3,18 @@ const log = msg =>
   document.getElementById('logs').innerHTML += msg + '<br>'
 
 const config = {
-  iceServers: [{
-    urls: 'stun:stun.l.google.com:19302'
-  }]
+  iceServers: [
+    {
+      urls: ['stun:stun3.l.google.com:19302', 'stun:stun4.l.google.com:19302']
+    },
+    {
+      urls: 'turn:seetomorrow.tokyo:3478',
+      username: 'kaiy',
+      credential: 'turnTurn1'
+    }
+  ],
+  // iceTransportPolicy: "relay",
+  iceCandidatePoolSize: 10
 }
 
 function generateUuid() {
@@ -62,6 +71,7 @@ pc.onicecandidate = event => {
 }
 
 socket.addEventListener('message', async (event) => {
+  console.log(event.data);
   const resp = JSON.parse(event.data)
 
   // Listen for server renegotiation notifications
@@ -74,6 +84,7 @@ socket.addEventListener('message', async (event) => {
     //const id = uuid.v4()
     const id = generateUuid();
     log(`Sending answer`)
+    console.log("Answer", id);
     socket.send(JSON.stringify({
       method: "answer",
       params: { desc: answer },
@@ -87,6 +98,8 @@ const join = async () => {
   await pc.setLocalDescription(offer)
   //const id = uuid.v4()
   const id = generateUuid();
+
+  console.log("join", id);
 
   socket.send(JSON.stringify({
     method: "join",
@@ -109,6 +122,7 @@ const join = async () => {
         await pc.setLocalDescription(offer)
         //const id = uuid.v4()
         const id = generateUuid();
+        console.log("offer", id);
         socket.send(JSON.stringify({
           method: "offer",
           params: { desc: offer },
