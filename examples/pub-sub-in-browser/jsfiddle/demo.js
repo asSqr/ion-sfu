@@ -8,8 +8,25 @@ const config = {
   }]
 }
 
+function generateUuid() {
+  // https://github.com/GoogleChrome/chrome-platform-analytics/blob/master/src/internal/identifier.js
+  // const FORMAT: string = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
+  let chars = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".split("");
+  for (let i = 0, len = chars.length; i < len; i++) {
+      switch (chars[i]) {
+          case "x":
+              chars[i] = Math.floor(Math.random() * 16).toString(16);
+              break;
+          case "y":
+              chars[i] = (Math.floor(Math.random() * 4) + 8).toString(16);
+              break;
+      }
+  }
+  return chars.join("");
+}
+
 //const socket = new WebSocket("ws://localhost:7000/ws");
-const socket = new WebSocket("wss://kaiy-co-dev-sfu.an.r.appspot.com:8081/ws");
+const socket = new WebSocket("wss://kaiy-co-dev-sfu.an.r.appspot.com/ws");
 //const scheme = window.location.protocol == "https:" ? 'wss://' : 'ws://';
 /*const webSocketUri =  scheme
                     + window.location.hostname
@@ -55,7 +72,7 @@ socket.addEventListener('message', async (event) => {
     await pc.setLocalDescription(answer)
 
     //const id = uuid.v4()
-    const id = 1234;
+    const id = generateUuid();
     log(`Sending answer`)
     socket.send(JSON.stringify({
       method: "answer",
@@ -69,7 +86,7 @@ const join = async () => {
   const offer = await pc.createOffer()
   await pc.setLocalDescription(offer)
   //const id = uuid.v4()
-  const id = 1234;
+  const id = generateUuid();
 
   socket.send(JSON.stringify({
     method: "join",
@@ -91,6 +108,7 @@ const join = async () => {
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
         //const id = uuid.v4()
+        const id = generateUuid();
         socket.send(JSON.stringify({
           method: "offer",
           params: { desc: offer },
