@@ -248,10 +248,10 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 		// is merged
 		time.Sleep(1000 * time.Millisecond)
 
-		//log.Debugf("on negotiation needed called")
+		log.Printf("on negotiation needed called")
 		offer, err := p.peer.CreateOffer()
 		if err != nil {
-			//log.Errorf("CreateOffer error: %v", err)
+			log.Printf("CreateOffer error: %v", err)
 			return
 		}
 

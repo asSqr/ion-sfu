@@ -33,5 +33,14 @@ maxbuffertime = 1000
 # urls = ["turn:turn.awsome.org:3478"]
 # username = "awsome"
 # credential = "awsome"
+
+portrange = [1, 60000]
+[[webrtc.iceserver]]
+urls = ["stun:stun3.l.google.com:19302", "stun:stun4.l.google.com:19302"]
+[[webrtc.iceserver]]
+urls = ["turn:seetomorrow.tokyo:3478"]
+username = "kaiy"
+credential = "turnTurn1"
+
 [log]
 level = "debug"

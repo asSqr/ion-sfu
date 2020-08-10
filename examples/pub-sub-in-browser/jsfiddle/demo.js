@@ -14,7 +14,7 @@ const config = {
     }
   ],
   // iceTransportPolicy: "relay",
-  iceCandidatePoolSize: 10
+  //iceCandidatePoolSize: 10
 }
 
 function generateUuid() {
@@ -33,6 +33,8 @@ function generateUuid() {
   }
   return chars.join("");
 }
+
+const id = generateUuid();
 
 //const socket = new WebSocket("ws://localhost:7000/ws");
 const socket = new WebSocket("wss://kaiy-co-dev-sfu.an.r.appspot.com/ws");
@@ -60,7 +62,12 @@ pc.ontrack = function ({ track, streams }) {
 
 pc.oniceconnectionstatechange = e => log(`ICE connection state: ${pc.iceConnectionState}`)
 pc.onicecandidate = event => {
+  console.log(event);
+  console.log("onicecandidate");
+
   if (event.candidate !== null) {
+    console.log("send trickle");
+
     socket.send(JSON.stringify({
       method: "trickle",
       params: {
@@ -74,6 +81,10 @@ socket.addEventListener('message', async (event) => {
   console.log(event.data);
   const resp = JSON.parse(event.data)
 
+  console.log("message");
+  console.log( resp.method );
+  console.log( resp );
+
   // Listen for server renegotiation notifications
   if (!resp.id && resp.method === "offer") {
     log(`Got offer notification`)
@@ -82,7 +93,7 @@ socket.addEventListener('message', async (event) => {
     await pc.setLocalDescription(answer)
 
     //const id = uuid.v4()
-    const id = generateUuid();
+    //const id = generateUuid();
     log(`Sending answer`)
     console.log("Answer", id);
     socket.send(JSON.stringify({
@@ -91,13 +102,18 @@ socket.addEventListener('message', async (event) => {
       id
     }))
   }
+
+  if (resp.method === "trickle") {
+    console.log("received trickle");
+    await pc.addIceCandidate( resp.params );
+  }
 })
 
 const join = async () => {
   const offer = await pc.createOffer()
   await pc.setLocalDescription(offer)
   //const id = uuid.v4()
-  const id = generateUuid();
+  //const id = generateUuid();
 
   console.log("join", id);
 
@@ -121,7 +137,7 @@ const join = async () => {
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
         //const id = uuid.v4()
-        const id = generateUuid();
+        //const id = generateUuid();
         console.log("offer", id);
         socket.send(JSON.stringify({
           method: "offer",
