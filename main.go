@@ -123,7 +123,7 @@ func NewRPC() *RPC {
 
 // Join message sent when initializing a peer connection
 type Join struct {
-	Sid   uint32                    `json:"sid"`
+	Sid   string                    `json:"sid"`
 	Offer webrtc.SessionDescription `json:"offer"`
 }
 
@@ -136,6 +136,17 @@ type Negotiation struct {
 type Trickle struct {
 	Candidate webrtc.ICECandidateInit `json:"candidate"`
 }
+
+type StreamInfo struct {
+	Uid string `json:"uid"`
+	StreamId string `json:"streamId"`
+	Sid string `json:"sid"`
+}
+
+var userIdToStream map[string](map[string]string) = make(map[string](map[string]string))
+var userIdToScreenStream map[string](map[string]string) = make(map[string](map[string]string))
+var floorIdToSectionId map[string]uint32 = make(map[string]uint32)
+var counter uint32 = 1;
 
 // Handle RPC call
 func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
@@ -163,7 +174,17 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 			break
 		}
 
-		peer, err := r.sfu.NewWebRTCTransport(join.Sid, join.Offer)
+		var uintSid uint32;
+
+		if sid, ok := floorIdToSectionId[join.Sid]; ok {
+			uintSid = sid;
+		} else {
+			uintSid = counter;
+			floorIdToSectionId[join.Sid] = counter;
+			counter += 1;
+		}
+
+		peer, err := r.sfu.NewWebRTCTransport(uintSid, join.Offer)
 
 		if err != nil {
 			log.Printf("connect: error creating peer: %v", err)
@@ -220,7 +241,7 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 		})
 
 		peer.OnNegotiationNeeded(func() {
-			//log.Debugf("on negotiation needed called")
+			log.Printf("on negotiation needed called")
 			offer, err := p.peer.CreateOffer()
 			if err != nil {
 				log.Printf("CreateOffer error: %v", err)
@@ -377,6 +398,196 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 		if err != nil {
 			log.Printf("error setting ice candidate %s", err)
 		}
+
+	case "stream":
+		if p.peer == nil {
+			log.Printf("connect: no peer exists for connection")
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", errors.New("no peer exists")),
+			})
+			break
+		}
+
+		log.Printf("peer %s get stream", p.peer.ID())
+
+		var streamInfo StreamInfo
+
+		err := json.Unmarshal(*req.Params, &streamInfo)
+		if err != nil {
+			log.Printf("connect: error parsing candidate: %v", err)
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", err),
+			})
+			break
+		}
+
+		_ = conn.Reply(ctx, req.ID, userIdToStream[streamInfo.Sid])
+
+	case "screen_stream":
+		if p.peer == nil {
+			log.Printf("connect: no peer exists for connection")
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", errors.New("no peer exists")),
+			})
+			break
+		}
+
+		log.Printf("peer %s get screen stream", p.peer.ID())
+
+		var streamInfo StreamInfo
+
+		err := json.Unmarshal(*req.Params, &streamInfo)
+		if err != nil {
+			log.Printf("connect: error parsing candidate: %v", err)
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", err),
+			})
+			break
+		}
+
+		_ = conn.Reply(ctx, req.ID, userIdToScreenStream[streamInfo.Sid])
+
+	case "register_stream":
+		log.Printf("register_stream")
+		if p.peer == nil {
+			log.Printf("connect: no peer exists for connection")
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", errors.New("no peer exists")),
+			})
+			break
+		}
+
+		log.Printf("peer %s register stream", p.peer.ID())
+
+		var streamInfo StreamInfo
+
+		err := json.Unmarshal(*req.Params, &streamInfo)
+		if err != nil {
+			log.Printf("connect: error parsing candidate: %v", err)
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", err),
+			})
+			break
+		}
+
+		log.Printf("registered UserId %s StreamId %s", streamInfo.Uid, streamInfo.StreamId)
+
+		if _, ok := userIdToStream[streamInfo.Sid]; ok {
+			userIdToStream[streamInfo.Sid][streamInfo.Uid] = streamInfo.StreamId
+		} else {
+			userIdToStream[streamInfo.Sid] = make(map[string]string)
+			userIdToStream[streamInfo.Sid][streamInfo.Uid] = streamInfo.StreamId
+		}
+
+		conn.Notify(ctx, "stream", userIdToStream)
+
+	case "register_screen_stream":
+		log.Printf("register_screen_stream")
+		if p.peer == nil {
+			log.Printf("connect: no peer exists for connection")
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", errors.New("no peer exists")),
+			})
+			break
+		}
+
+		log.Printf("peer %s register screen stream", p.peer.ID())
+
+		var streamInfo StreamInfo
+
+		err := json.Unmarshal(*req.Params, &streamInfo)
+		if err != nil {
+			log.Printf("connect: error parsing candidate: %v", err)
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", err),
+			})
+			break
+		}
+
+		log.Printf("registered UserId %s screenStreamId %s", streamInfo.Uid, streamInfo.StreamId)
+
+		if _, ok := userIdToScreenStream[streamInfo.Sid]; ok {
+			userIdToScreenStream[streamInfo.Sid][streamInfo.Uid] = streamInfo.StreamId
+		} else {
+			userIdToScreenStream[streamInfo.Sid] = make(map[string]string)
+			userIdToScreenStream[streamInfo.Sid][streamInfo.Uid] = streamInfo.StreamId
+		}
+
+		conn.Notify(ctx, "screen_stream", userIdToScreenStream)
+
+	case "remove_stream":
+		log.Printf("remove_stream")
+		if p.peer == nil {
+			log.Printf("connect: no peer exists for connection")
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", errors.New("no peer exists")),
+			})
+			break
+		}
+
+		log.Printf("peer %s remove stream", p.peer.ID())
+
+		var streamInfo StreamInfo
+
+		err := json.Unmarshal(*req.Params, &streamInfo)
+		if err != nil {
+			log.Printf("connect: error parsing candidate: %v", err)
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", err),
+			})
+			break
+		}
+
+		log.Printf("remove UserId %s StreamId %s", streamInfo.Uid, streamInfo.StreamId)
+
+		if _, ok := userIdToStream[streamInfo.Sid]; ok {
+			delete( userIdToStream[streamInfo.Sid], streamInfo.Uid )
+		}
+
+		conn.Notify(ctx, "stream", userIdToStream)
+
+	case "remove_screen_stream":
+		log.Printf("remove_stream")
+		if p.peer == nil {
+			log.Printf("connect: no peer exists for connection")
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", errors.New("no peer exists")),
+			})
+			break
+		}
+
+		log.Printf("peer %s remove screen stream", p.peer.ID())
+
+		var streamInfo StreamInfo
+
+		err := json.Unmarshal(*req.Params, &streamInfo)
+		if err != nil {
+			log.Printf("connect: error parsing candidate: %v", err)
+			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+				Code:    500,
+				Message: fmt.Sprintf("%s", err),
+			})
+			break
+		}
+
+		log.Printf("remove UserId %s screenStreamId %s", streamInfo.Uid, streamInfo.StreamId)
+
+		if _, ok := userIdToScreenStream[streamInfo.Sid]; ok {
+			delete( userIdToScreenStream[streamInfo.Sid], streamInfo.Uid )
+		}
+
+		conn.Notify(ctx, "screen_stream", userIdToScreenStream)
 	}
 }
 

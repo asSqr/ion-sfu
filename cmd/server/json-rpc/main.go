@@ -137,6 +137,12 @@ type Trickle struct {
 	Candidate webrtc.ICECandidateInit `json:"candidate"`
 }
 
+// Offer
+type Offer struct {
+	offer string `json:"offer"`
+	id string `json:"id"`
+}
+
 // Handle RPC call
 func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	p := forContext(ctx)
@@ -233,7 +239,12 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 				return
 			}
 
-			if err := conn.Notify(ctx, "offer", offer); err != nil {
+			param = Offer {
+				offer: offer,
+				id: peer.ID()
+			}
+
+			if err := conn.Notify(ctx, "offer", param.ToJSON()); err != nil {
 				log.Printf("error sending offer %s", err)
 			}
 		})

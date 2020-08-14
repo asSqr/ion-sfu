@@ -110,8 +110,9 @@ socket.addEventListener('message', async (event) => {
 })
 
 const join = async () => {
-  const offer = await pc.createOffer()
-  await pc.setLocalDescription(offer)
+  const pc2 = new RTCPeerConnection(config)
+  const offer = await pc2.createOffer()
+  await pc2.setLocalDescription(offer)
   //const id = uuid.v4()
   //const id = generateUuid();
 
@@ -119,7 +120,7 @@ const join = async () => {
 
   socket.send(JSON.stringify({
     method: "join",
-    params: { sid: 1234, offer: pc.localDescription },
+    params: { sid: 1234, offer: pc2.localDescription },
     id
   }))
 
@@ -132,10 +133,10 @@ const join = async () => {
       console.log("Got publish answer")
 
       // Hook this here so it's not called before joining
-      pc.onnegotiationneeded = async function () {
+      pc2.onnegotiationneeded = async function () {
         log("Renegotiating")
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
+        const offer = await pc2.createOffer()
+        await pc2.setLocalDescription(offer)
         //const id = uuid.v4()
         //const id = generateUuid();
         console.log("offer", id);
@@ -149,14 +150,14 @@ const join = async () => {
           const resp = JSON.parse(event.data)
           if (resp.id === id) {
             log(`Got renegotiation answer`)
-            pc.setRemoteDescription(resp.result)
+            pc2.setRemoteDescription(resp.result)
           }
         })
       }
 
       console.log( resp );
 
-      pc.setRemoteDescription(resp.result)
+      pc2.setRemoteDescription(resp.result)
     }
   })
 }
